@@ -1,11 +1,14 @@
 package com.RobinNotBad.BiliClient.activity.settings;
 
 
+import static com.RobinNotBad.BiliClient.activity.settings.WBItest.wbi;
+
 import com.RobinNotBad.BiliClient.activity.base.BaseActivity;
 import com.RobinNotBad.BiliClient.api.ConfInfoApi;
 import com.RobinNotBad.BiliClient.api.SearchApi;
 import com.RobinNotBad.BiliClient.util.JsonUtil;
 import com.RobinNotBad.BiliClient.util.MsgUtil;
+import com.RobinNotBad.BiliClient.util.NetWorkUtil;
 import com.RobinNotBad.BiliClient.util.SharedPreferencesUtil;
 import com.google.android.material.card.MaterialCardView;
 
@@ -147,10 +150,8 @@ public class SettingMainActivity extends BaseActivity {
         test.setOnClickListener(view -> {
 
             try {
-                String mmm = ConfInfoApi.getWBIMixinKey("7cd084941338484aae1ad9425b84077c4932caff0ff746eab6f01bf08b70ac45");
-                Log.e("mmm",mmm);
-                String args = ConfInfoApi.signWBI("bar=514&foo=114", "&zab=1919810", mmm);
-                MsgUtil.showText(this,"test",args);
+                JSONObject jsonObject = new JSONObject("{\"mid\":474415592}");
+                new HTTPGET(this).execute(jsonObject.toString());
             }catch (Exception e){
                 e.printStackTrace();
             }
