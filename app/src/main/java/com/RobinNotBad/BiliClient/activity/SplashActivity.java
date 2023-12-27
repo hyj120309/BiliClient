@@ -89,7 +89,7 @@ public class SplashActivity extends Activity {
 
             if(SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.setup,false)) {//判断是否设置完成
                 try {
-                    Response response = NetWorkUtil.get("https://bilibili.com",ConfInfoApi.defHeaders);
+                    Response response = NetWorkUtil.get("https://bilibili.com",ConfInfoApi.webHeaders);
                     if (SharedPreferencesUtil.getLong("mid", 0) == 0) {
                         String cookies = UserLoginApi.getCookies(response);
                         Log.e("cookies",cookies);
