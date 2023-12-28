@@ -23,7 +23,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 import okhttp3.Response;
 
@@ -83,7 +85,7 @@ public class ConfInfoApi
         36, 20, 34, 44, 52};
 
     public static String getWBIRawKey() throws IOException, JSONException {
-        JSONObject getJson = new JSONObject(Objects.requireNonNull(NetWorkUtil.get("https://api.bilibili.com/x/web-interface/nav", defHeaders).body()).string());
+        JSONObject getJson = new JSONObject(Objects.requireNonNull(NetWorkUtil.get("https://api.bilibili.com/x/web-interface/nav", webHeaders).body()).string());
         JSONObject wbi_img = getJson.getJSONObject("data").getJSONObject("wbi_img");  //不要被名称骗了，这玩意是签名用的
         String img_key = LittleToolsUtil.getFileFirstName(LittleToolsUtil.getFileNameFromLink(wbi_img.getString("img_url")));  //得到文件名
         String sub_key = LittleToolsUtil.getFileFirstName(LittleToolsUtil.getFileNameFromLink(wbi_img.getString("sub_url")));
@@ -103,19 +105,43 @@ public class ConfInfoApi
     //计算时需要按字母顺序排列
     public static String signWBI(String url_query_before_wts,String url_query_after_wts ,String mixin_key) {
         String wts = String.valueOf(System.currentTimeMillis() / 1000);
-        String calc_str = Uri.encode(url_query_before_wts, "@#&=*+-_.,:!?()/~'%") + "&wts=" + wts + Uri.encode(url_query_after_wts, "@#&=*+-_.,:!?()/~'%") + mixin_key;
+        String calc_str = sortUrlParams(Uri.encode(url_query_before_wts, "@#&=*+-_.,:!?()/~'%") + "&wts=" + wts + Uri.encode(url_query_after_wts, "@#&=*+-_.,:!?()/~'%") + mixin_key) ;
         Log.e("calc_str",calc_str);
 
         String w_rid = md5(calc_str);
 
         return url_query_before_wts + url_query_after_wts + "&w_rid=" + w_rid + "&wts=" + wts;
     }
+    public static String sortUrlParams(String url) {
+        // 解析URL参数
+        Map<String, String> paramMap = new HashMap<>();
+        String[] params = url.split("&");
+        for (String param : params) {
+            String[] keyValue = param.split("=");
+            if (keyValue.length == 2) {
+                paramMap.put(keyValue[0], keyValue[1]);
+            }else if (keyValue.length == 1) {
+                paramMap.put(keyValue[0], "");
+            }
+        }
 
+        // 使用TreeMap对参数进行排序
+        Map<String, String> sortedMap = new TreeMap<>(paramMap);
 
+        // 构建排序后的URL
+        StringBuilder sortedUrl = new StringBuilder();
+        boolean isFirst = true;
+        for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
+            if (!isFirst) {
+                sortedUrl.append("&");
+            } else {
+                isFirst = false;
+            }
+            sortedUrl.append(entry.getKey()).append("=").append(entry.getValue());
+        }
 
-
-
-
+        return sortedUrl.toString();
+    }
 
 
     private static String md5(String plainText) {

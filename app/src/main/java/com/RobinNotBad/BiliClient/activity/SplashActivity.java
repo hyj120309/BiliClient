@@ -143,7 +143,9 @@ public class SplashActivity extends Activity {
 
     private void checkWBI() throws JSONException, IOException {
         int curr = ConfInfoApi.getDateCurr();
-        if (SharedPreferencesUtil.getInt("last_wbi", 0) < curr) {    //限制一天一次
+        int lastwbi = SharedPreferencesUtil.getInt("last_wbi", 0);
+        Log.e("wbi", String.valueOf(lastwbi));
+        if (lastwbi < curr) {    //限制一天一次
             Log.e("debug", "检查WBI");
             SharedPreferencesUtil.putInt("last_wbi", curr);
 

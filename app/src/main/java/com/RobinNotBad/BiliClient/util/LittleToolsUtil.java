@@ -3,8 +3,11 @@ package com.RobinNotBad.BiliClient.util;
 import android.content.Context;
 import android.webkit.URLUtil;
 
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 //2023-07-25
 
@@ -66,11 +69,30 @@ public class LittleToolsUtil {
         }
         return "fail";
     }
+    public static String extractCodeFromURL(String urlString) {
+        try {
+            URL url = new URL(urlString);
+            String path = url.getPath();
+
+            // 使用正则表达式匹配URL路径
+            Pattern pattern = Pattern.compile("/([^/]+)\\.\\w+$");
+            Matcher matcher = pattern.matcher(path);
+
+            if (matcher.find()) {
+                String code = matcher.group(1);
+                return code;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 
     public static String getFileFirstName(String file){
         for (int i = 0; i < file.length(); i++) {
             if(file.charAt(i)=='.'){
-                return file.substring(0,i-1);
+                return file.substring(0,i);
             }
         }
         return "fail";
