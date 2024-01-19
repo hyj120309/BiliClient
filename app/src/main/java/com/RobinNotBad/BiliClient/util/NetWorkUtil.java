@@ -2,10 +2,14 @@ package com.RobinNotBad.BiliClient.util;
 
 import android.util.Log;
 
+import com.RobinNotBad.BiliClient.api.ConfInfoApi;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.Inflater;
@@ -43,7 +47,7 @@ public class NetWorkUtil
         Request.Builder requestb = new Request.Builder().url(url).header("Referer", "https://www.bilibili.com/").addHeader("Accept", "*/*").addHeader("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)");
         Request request = requestb.build();
         Response response = client.newCall(request).execute();
-
+        saveCookiesFromResponse(response);
         if(response.isSuccessful())
             return response;
         return null;
@@ -59,7 +63,9 @@ public class NetWorkUtil
         for(int i = 0; i < headers.size(); i+=2)
             requestBuilder = requestBuilder.addHeader(headers.get(i), headers.get(i+1));
         Request request = requestBuilder.build();
-        return client.newCall(request).execute();
+        Response response =  client.newCall(request).execute();
+        saveCookiesFromResponse(response);
+        return response;
     }
 
     public static Response post(String url, String data, ArrayList<String> headers) throws IOException
@@ -74,7 +80,9 @@ public class NetWorkUtil
         for(int i = 0; i < headers.size(); i+=2)
             requestBuilder = requestBuilder.addHeader(headers.get(i), headers.get(i+1));
         Request request = requestBuilder.build();
-        return client.newCall(request).execute();
+        Response response =  client.newCall(request).execute();
+        saveCookiesFromResponse(response);
+        return response;
     }
 
 
@@ -112,5 +120,61 @@ public class NetWorkUtil
         byte[] output = outputStream.toByteArray();
         outputStream.close();
         return output;
+    }
+
+    public static String getInfoFromCookie(String name, String cookie)
+    {
+        String[] cookies = cookie.split("; ");
+        for(String i : cookies)
+        {
+            if(i.contains(name + "="))
+                return i.substring(name.length() + 1);
+        }
+        return "";
+    }
+
+    private static void saveCookiesFromResponse(Response response) {
+        List<String> newCookies = response.headers("Set-Cookie");
+
+        //如果没有新cookies，直接返回
+        if (newCookies.isEmpty()) return;
+        String cookiesStr = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
+        ArrayList<String> oldCookies = (cookiesStr.equals("") ? new ArrayList<>() : new ArrayList<>(Arrays.asList(cookiesStr.split("; "))));  //转list
+
+        for (String newCookie : newCookies) {  //对每一条新cookie遍历
+
+            int index = newCookie.indexOf("; ");
+            if (index != -1) newCookie = newCookie.substring(0, index);  //如果没有分号不做处理
+
+            index = newCookie.indexOf("=") + 1;
+            if(index == 0) continue;   //如果没有等号，跳过
+
+            String key = newCookie.substring(0, index);    //key=
+            Log.e("debug-newCookie", newCookie);
+
+            boolean added = false;
+            for (int i = 0; i < oldCookies.size(); i++) {  //查找旧cookie表有没有
+                String oldCookie = oldCookies.get(i);
+                if (oldCookie.contains(key)) {
+                    oldCookies.set(i, newCookie);    //有的话直接换掉
+                    added = true;
+                    break;
+                }
+            }
+            if (!added) {
+                oldCookies.add(newCookie);  //没有就加项
+            }
+        }
+
+        StringBuilder setCookies = new StringBuilder();
+        for (String setCookie : oldCookies) {
+            setCookies.append(setCookie).append("; ");
+        }
+        //如果一次setCookies都没有，就不要存了， 因为是个空字符串
+        if(setCookies.length() >= 2) {
+            Log.e("debug-save-result", setCookies.substring(0, setCookies.length() - 2));
+            SharedPreferencesUtil.putString(SharedPreferencesUtil.cookies, setCookies.substring(0, setCookies.length() - 2));
+            ConfInfoApi.refreshHeaders();
+        }
     }
 }

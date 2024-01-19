@@ -50,7 +50,7 @@ public class DynamicActivity extends InstanceActivity {
         findViewById(R.id.top).setOnClickListener(view -> {
             Intent intent = new Intent();
             intent.setClass(DynamicActivity.this, MenuActivity.class);
-            intent.putExtra("from",2);
+            intent.putExtra("from",3);
             startActivity(intent);
         });
 

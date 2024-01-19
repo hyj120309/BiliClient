@@ -89,6 +89,8 @@ public class ArticleContentAdapter extends RecyclerView.Adapter<ArticleContentAd
                 break;
             case 1:
                 ImageView imageView = holder.itemView.findViewById(R.id.imageView);  //图片
+                //在图片没有完全加载成功之前， 先用占位图垫着，后面等加载成功了再替换
+                imageView.setImageResource(R.drawable.placeholder);
 
                 if(SharedPreferencesUtil.getBoolean("dev_article_pic_load",true)) {
                     Bitmap cachedImage = pictureCache.get(realPosition);
@@ -96,7 +98,7 @@ public class ArticleContentAdapter extends RecyclerView.Adapter<ArticleContentAd
                         imageView.setImageBitmap(cachedImage);
                     else CenterThreadPool.run(()->{
                         try {
-                            Bitmap bitmap = Glide.with(context).asBitmap().load(article.get(realPosition).content+"@50q.webp").diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).submit().get();
+                            Bitmap bitmap = Glide.with(context).asBitmap().load(article.get(realPosition).content).diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true).submit().get();
                             pictureCache.put(realPosition,bitmap);
                             ((Activity)context).runOnUiThread(()->imageView.setImageBitmap(bitmap));
                         } catch (Exception e) {
@@ -132,7 +134,7 @@ public class ArticleContentAdapter extends RecyclerView.Adapter<ArticleContentAd
                 keywords.setMaxLines((keywords_expand ? 10 : 1));
                 keywords.setOnClickListener(view1 -> {
                     if(keywords_expand) keywords.setMaxLines(1);
-                    else keywords.setMaxLines(10);
+                    else keywords.setMaxLines(512);
                     keywords_expand = !keywords_expand;
                 });
 

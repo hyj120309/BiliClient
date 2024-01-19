@@ -2,6 +2,8 @@ package com.RobinNotBad.BiliClient.adapter;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -28,7 +30,9 @@ import com.RobinNotBad.BiliClient.api.ReplyApi;
 import com.RobinNotBad.BiliClient.model.Reply;
 import com.RobinNotBad.BiliClient.util.CenterThreadPool;
 import com.RobinNotBad.BiliClient.util.EmoteUtil;
+import com.RobinNotBad.BiliClient.util.MsgUtil;
 import com.RobinNotBad.BiliClient.view.CustomListView;
+import com.RobinNotBad.BiliClient.util.SharedPreferencesUtil;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
@@ -37,7 +41,6 @@ import org.json.JSONException;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 //评论Adapter
@@ -100,6 +103,15 @@ public class ReplyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
             String text = replyList.get(realPosition).message;
             replyHolder.message.setText(text);  //防止加载速度慢时露出鸡脚
+            if(SharedPreferencesUtil.getBoolean("copy_enable", true)){
+                replyHolder.message.setOnLongClickListener(view -> {
+                    ClipboardManager clipboardManager = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipData clipData = ClipData.newPlainText("label",text);
+                    clipboardManager.setPrimaryClip(clipData);
+                    MsgUtil.toast("已复制评论",context);
+                    return false;
+                });
+            }
             if(replyList.get(realPosition).emote != null) {
                 CenterThreadPool.run(() -> {
                     try {
@@ -133,42 +145,7 @@ public class ReplyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 else replyHolder.childCount.setText("共" + replyList.get(realPosition).childCount + "条回复");
 
                 if(replyList.get(realPosition).childMsgList != null) {
-                    class InnerHolder extends RecyclerView.ViewHolder{
-
-                        public InnerHolder(@NonNull View itemView) {
-                            super(itemView);
-                        }
-                        public void bind(String message){
-                            if(itemView instanceof  TextView){
-                                ((TextView) itemView).setText(message);
-                            }
-                        }
-                    }
-                    class ArrayAdapter extends RecyclerView.Adapter<InnerHolder>{
-                        private List<String> data;
-                        public ArrayAdapter(List<String> data){
-                            this.data = data;
-                        }
-                        @NonNull
-                        @Override
-                        public InnerHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-                            View rootView = LayoutInflater.from(parent.getContext()).inflate(R.layout.cell_child_reply, parent, false);
-                            return new InnerHolder(rootView);
-                        }
-
-                        @Override
-                        public void onBindViewHolder(@NonNull InnerHolder holder, int position) {
-                            holder.bind(data.get(position));
-                        }
-
-                        @Override
-                        public int getItemCount() {
-                            return data.size();
-                        }
-
-
-                    };
-                    ArrayAdapter adapter = new ArrayAdapter(replyList.get(realPosition).childMsgList);
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.cell_child_reply, replyList.get(realPosition).childMsgList);
                     replyHolder.childReplies.setAdapter(adapter);
                 }
             } else replyHolder.childReplyCard.setVisibility(View.GONE);
@@ -262,7 +239,9 @@ public class ReplyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             });
         }
     }
-
+    public void setOid(long oid){
+        this.oid = oid;
+    }
     @Override
     public int getItemCount() {
         return replyList.size() + 1;

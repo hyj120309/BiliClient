@@ -3,9 +3,11 @@ package com.RobinNotBad.BiliClient.activity.search;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -18,8 +20,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.RobinNotBad.BiliClient.R;
-import com.RobinNotBad.BiliClient.activity.base.BaseActivity;
 import com.RobinNotBad.BiliClient.activity.MenuActivity;
+import com.RobinNotBad.BiliClient.activity.base.InstanceActivity;
 import com.RobinNotBad.BiliClient.adapter.SearchAdapter;
 import com.RobinNotBad.BiliClient.api.SearchApi;
 import com.RobinNotBad.BiliClient.model.VideoCard;
@@ -31,7 +33,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class SearchOldActivity extends BaseActivity {
+public class SearchOldActivity extends InstanceActivity {
 
     private RecyclerView recyclerView;
     private ConstraintLayout searchBar;
@@ -48,7 +50,7 @@ public class SearchOldActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_old);
-        Log.e("debug","进入搜索页");
+        Log.e("debug","进入旧版搜索页");
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(SearchOldActivity.this));
@@ -58,7 +60,7 @@ public class SearchOldActivity extends BaseActivity {
         findViewById(R.id.top).setOnClickListener(view -> {
             Intent intent = new Intent();
             intent.setClass(SearchOldActivity.this, MenuActivity.class);
-            intent.putExtra("from",1);
+            intent.putExtra("from",2);
             startActivity(intent);
         });
 
@@ -128,8 +130,6 @@ public class SearchOldActivity extends BaseActivity {
             InputMethodManager manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             manager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
 
-
-
             if (str.equals("")) {
                 runOnUiThread(() -> Toast.makeText(this, "你还木有输入内容哦~", Toast.LENGTH_SHORT).show());
             } else {
@@ -193,5 +193,33 @@ public class SearchOldActivity extends BaseActivity {
         }
         refreshing = false;
     }
+    private Point startPoint;
 
+    /**
+     * Called when a touch screen event was not handled by any of the views under it.
+     * if is swipe up, hide search bar, else show search bar
+     * @param event The touch screen event being processed.
+     */
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()){
+            case MotionEvent.ACTION_DOWN:
+                startPoint = new Point((int)event.getX(),(int)event.getY());
+                break;
+            case MotionEvent.ACTION_MOVE:
+                //先判断是不是竖向滑动， 如果是竖向滑动， 再考虑是上滑还是下滑
+                boolean isVerticalMove = Math.abs(event.getY() - startPoint.y) > Math.abs(event.getX() - startPoint.x);
+                if(isVerticalMove) {
+                    //上滑显示
+                    boolean isSwipeUp = event.getY() - startPoint.y < 0;
+                    if(isSwipeUp) {
+                        searchBar.setVisibility(View.VISIBLE);
+                    }else {
+                        searchBar.setVisibility(View.GONE);
+                    }
+                }
+                break;
+        }
+        return super.onTouchEvent(event);
+    }
 }

@@ -1,11 +1,13 @@
 package com.RobinNotBad.BiliClient.activity.message;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
-import android.widget.Toast;
+
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.RobinNotBad.BiliClient.R;
 import com.RobinNotBad.BiliClient.activity.MenuActivity;
 import com.RobinNotBad.BiliClient.activity.base.InstanceActivity;
@@ -15,15 +17,20 @@ import com.RobinNotBad.BiliClient.api.PrivateMsgApi;
 import com.RobinNotBad.BiliClient.model.PrivateMsgSession;
 import com.RobinNotBad.BiliClient.model.UserInfo;
 import com.RobinNotBad.BiliClient.util.CenterThreadPool;
+import com.RobinNotBad.BiliClient.util.MsgUtil;
 import com.google.android.material.card.MaterialCardView;
+
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 
 public class MessageActivity extends InstanceActivity {
     private RecyclerView sessionsView;
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,7 +39,7 @@ public class MessageActivity extends InstanceActivity {
         findViewById(R.id.top).setOnClickListener(view -> {
             Intent intent = new Intent();
             intent.setClass(this, MenuActivity.class);
-            intent.putExtra("from",5);
+            intent.putExtra("from",6);
             startActivity(intent);
         });
                 
@@ -42,7 +49,7 @@ public class MessageActivity extends InstanceActivity {
             intent.setClass(this, MessageListActivity.class);
             intent.putExtra("type","reply");
             startActivity(intent);
-            ((TextView)findViewById(R.id.reply_text)).setText("回复我的(0未读)");
+            ((TextView)findViewById(R.id.reply_text)).setText("回复我的");
         });
 
 
@@ -52,7 +59,7 @@ public class MessageActivity extends InstanceActivity {
             intent.setClass(this, MessageListActivity.class);
             intent.putExtra("type","like");
             startActivity(intent);
-            ((TextView)findViewById(R.id.like_text)).setText("收到的赞(0未读)");
+            ((TextView)findViewById(R.id.like_text)).setText("收到的赞");
         });
 
         MaterialCardView at = findViewById(R.id.at);
@@ -61,7 +68,7 @@ public class MessageActivity extends InstanceActivity {
             intent.setClass(this, MessageListActivity.class);
             intent.putExtra("type","at");
             startActivity(intent);
-            ((TextView)findViewById(R.id.at_text)).setText("@我(0未读)");
+            ((TextView)findViewById(R.id.at_text)).setText("@我");
         });
 
         MaterialCardView system = findViewById(R.id.system);
@@ -70,7 +77,6 @@ public class MessageActivity extends InstanceActivity {
             intent.setClass(this, MessageListActivity.class);
             intent.putExtra("type","system");
             startActivity(intent);
-            ((TextView)findViewById(R.id.system_text)).setText("系统通知(0未读)");
         });
 
         sessionsView = findViewById(R.id.sessions_list);
@@ -88,20 +94,22 @@ public class MessageActivity extends InstanceActivity {
                 PrivateMsgSessionsAdapter adapter = new PrivateMsgSessionsAdapter(this,sessionsList,userMap);
                 runOnUiThread(() -> {
                     try {
-                        ((TextView) findViewById(R.id.reply_text)).setText("回复我的(" + stats.getInt("reply") + "未读)");
-                        ((TextView) findViewById(R.id.like_text)).setText("收到的赞(" + stats.getInt("like") + "未读)");
-                        ((TextView) findViewById(R.id.at_text)).setText("@我(" + stats.getInt("at") + "未读)");
-                        ((TextView) findViewById(R.id.system_text)).setText("系统通知(" + stats.getInt("system") + "未读)");
+                        ((TextView) findViewById(R.id.reply_text)).setText("回复我的" + ((stats.getInt("reply") > 0) ? ("(" + stats.getInt("reply") + "未读)") : ""));
+                        ((TextView) findViewById(R.id.like_text)).setText("收到的赞" + ((stats.getInt("like") > 0) ? ("(" + stats.getInt("like") + "未读)") : ""));
+                        ((TextView) findViewById(R.id.at_text)).setText("@我" + ((stats.getInt("at") > 0) ? ("(" + stats.getInt("at") + "未读)") : ""));
                         sessionsView.setLayoutManager(new LinearLayoutManager(this));
                         sessionsView.setAdapter(adapter);
-                    }catch (Exception e){
+                    } catch (JSONException e) {
+                        MsgUtil.jsonErr(e,this);
                         e.printStackTrace();
-                        Toast.makeText(this, "解析消息数据失败:(", Toast.LENGTH_SHORT).show();
                     }
                 });
-            } catch (Exception e) {
+            } catch (JSONException e) {
+                MsgUtil.jsonErr(e,this);
                 e.printStackTrace();
-                Toast.makeText(this, "解析消息数据失败:(", Toast.LENGTH_SHORT).show();
+            } catch (IOException e) {
+                MsgUtil.quickErr(MsgUtil.err_net,this);
+                e.printStackTrace();
             }
         });
     }

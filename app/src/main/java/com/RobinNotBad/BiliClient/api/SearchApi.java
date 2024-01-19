@@ -38,7 +38,7 @@ public class SearchApi {
         url = ConfInfoApi.signWBI(url);
         Log.e("debug-搜索链接",url);
 
-        JSONObject all = new JSONObject(Objects.requireNonNull(NetWorkUtil.get(url, ConfInfoApi.defHeaders).body()).string());  //得到一整个json
+        JSONObject all = new JSONObject(Objects.requireNonNull(NetWorkUtil.get(url, ConfInfoApi.webHeaders).body()).string());  //得到一整个json
 
         JSONObject data = all.getJSONObject("data");  //搜索列表中的data项又是一个json，把它提出来
 
@@ -59,7 +59,7 @@ public class SearchApi {
         url = ConfInfoApi.signWBI(url);
         Log.e("debug-搜索链接",url);
 
-        JSONObject all = new JSONObject(Objects.requireNonNull(NetWorkUtil.get(url, ConfInfoApi.defHeaders).body()).string());  //得到一整个json
+        JSONObject all = new JSONObject(Objects.requireNonNull(NetWorkUtil.get(url, ConfInfoApi.webHeaders).body()).string());  //得到一整个json
 
         JSONObject data = all.getJSONObject("data");  //搜索列表中的data项又是一个json，把它提出来
 
@@ -134,7 +134,7 @@ public class SearchApi {
             JSONObject card = input.getJSONObject(i);    //获得专栏卡片
 
             articleInfo.id = card.getLong("id");
-            if(card.getJSONArray("image_urls").length() > 0) articleInfo.banner = card.getJSONArray("image_urls").getString(0);
+            if(card.getJSONArray("image_urls").length() > 0) articleInfo.banner = "http:" + card.getJSONArray("image_urls").getString(0);
             else articleInfo.banner = "";
             articleInfo.summary = "";
             articleInfo.wordCount = 0;

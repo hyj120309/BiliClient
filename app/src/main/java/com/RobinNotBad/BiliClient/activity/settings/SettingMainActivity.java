@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+
 import com.RobinNotBad.BiliClient.R;
 import com.RobinNotBad.BiliClient.activity.MenuActivity;
 import com.RobinNotBad.BiliClient.activity.article.ArticleInfoActivity;
@@ -15,8 +16,10 @@ import com.RobinNotBad.BiliClient.activity.base.InstanceActivity;
 import com.RobinNotBad.BiliClient.api.ConfInfoApi;
 import com.RobinNotBad.BiliClient.util.CenterThreadPool;
 import com.RobinNotBad.BiliClient.util.MsgUtil;
+import com.RobinNotBad.BiliClient.util.NetWorkUtil;
 import com.RobinNotBad.BiliClient.util.SharedPreferencesUtil;
 import com.google.android.material.card.MaterialCardView;
+
 import org.json.JSONException;
 
 import java.io.IOException;
@@ -35,7 +38,7 @@ public class SettingMainActivity extends InstanceActivity {
         findViewById(R.id.top).setOnClickListener(view -> {
             Intent intent = new Intent();
             intent.setClass(this,MenuActivity.class);
-            intent.putExtra("from",7);
+            intent.putExtra("from",8);
             startActivity(intent);
         });
 
@@ -140,9 +143,7 @@ public class SettingMainActivity extends InstanceActivity {
 
         MaterialCardView test = findViewById(R.id.test);    //用于测试
         test.setOnClickListener(view -> {
-            Intent intent = new Intent(this, ArticleInfoActivity.class);
-            intent.putExtra("cvid",28751039L);
-            startActivity(intent);
+            MsgUtil.toast("喵~",this);
         });
     }
 }

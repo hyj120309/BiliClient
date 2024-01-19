@@ -3,9 +3,11 @@ package com.RobinNotBad.BiliClient.activity.search;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -17,6 +19,7 @@ import androidx.viewpager.widget.ViewPager;
 import com.RobinNotBad.BiliClient.R;
 import com.RobinNotBad.BiliClient.activity.MenuActivity;
 import com.RobinNotBad.BiliClient.activity.base.InstanceActivity;
+import com.RobinNotBad.BiliClient.activity.search.SearchOldActivity;
 import com.RobinNotBad.BiliClient.adapter.ViewPagerFragmentAdapter;
 import com.RobinNotBad.BiliClient.api.SearchApi;
 import com.RobinNotBad.BiliClient.model.ArticleInfo;
@@ -52,6 +55,14 @@ public class SearchActivity extends InstanceActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        if(SharedPreferencesUtil.getBoolean("old_search_enable",false)){
+            Log.e("debug","送到旧版搜索");
+            Intent intent = new Intent(this,SearchOldActivity.class);
+            startActivity(intent);
+            finish();
+        }
+        
         setContentView(R.layout.activity_search);
         Log.e("debug","进入搜索页");
 
@@ -64,7 +75,7 @@ public class SearchActivity extends InstanceActivity {
         findViewById(R.id.top).setOnClickListener(view -> {
             Intent intent = new Intent();
             intent.setClass(SearchActivity.this, MenuActivity.class);
-            intent.putExtra("from",1);
+            intent.putExtra("from",2);
             startActivity(intent);
         });
 
@@ -79,11 +90,6 @@ public class SearchActivity extends InstanceActivity {
             }
             return false;
         });
-
-        if(SharedPreferencesUtil.getBoolean("first_search",true)){
-            Toast.makeText(this, "提示：本页面可以左右滑动", Toast.LENGTH_LONG).show();
-            SharedPreferencesUtil.putBoolean("first_search",false);
-        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -97,6 +103,11 @@ public class SearchActivity extends InstanceActivity {
                 MsgUtil.showText(this,"特殊彩蛋",getString(R.string.egg_robin_nahida));
                 return;
             }
+        }
+        
+        if(SharedPreferencesUtil.getBoolean("first_search_result",true)){
+            Toast.makeText(this, "提示：搜索结果可以左右滑动", Toast.LENGTH_LONG).show();
+            SharedPreferencesUtil.putBoolean("first_search_result",false);
         }
 
         if(!refreshing) {
@@ -124,20 +135,14 @@ public class SearchActivity extends InstanceActivity {
                         JSONArray resultUser = SearchApi.searchType(keyword, 1,"bili_user");
                         JSONArray resultArticle = SearchApi.searchType(keyword, 1,"article");
 
-                        if (resultVideo != null) {
-                            SearchApi.getVideosFromSearchResult(resultVideo, videoCardList);
-                            Log.e("debug", "刷新");
-                        } else runOnUiThread(() -> MsgUtil.toast("视频搜索结果为空OwO", this));
+                        if (resultVideo != null) SearchApi.getVideosFromSearchResult(resultVideo, videoCardList);
+                        else runOnUiThread(() -> MsgUtil.toast("视频搜索结果为空OwO", this));
 
-                        if (resultUser != null) {
-                            SearchApi.getUsersFromSearchResult(resultUser, userInfoList);
-                            Log.e("debug", "刷新");
-                        } else runOnUiThread(() -> MsgUtil.toast("用户搜索结果为空OwO", this));
+                        if (resultUser != null) SearchApi.getUsersFromSearchResult(resultUser, userInfoList);
+                        else runOnUiThread(() -> MsgUtil.toast("用户搜索结果为空OwO", this));
 
-                        if (resultArticle != null) {
-                            SearchApi.getArticlesFromSearchResult(resultArticle, articleInfoList);
-                            Log.e("debug", "刷新");
-                        } else runOnUiThread(() -> MsgUtil.toast("文章搜索结果为空OwO", this));
+                        if (resultArticle != null) SearchApi.getArticlesFromSearchResult(resultArticle, articleInfoList);
+                        else runOnUiThread(() -> MsgUtil.toast("文章搜索结果为空OwO", this));
 
                         runOnUiThread(this::reload_fragments);
                     } catch (IOException e) {
@@ -154,7 +159,7 @@ public class SearchActivity extends InstanceActivity {
     }
 
     private void reload_fragments(){
-        if(firstFragment) {
+        if(firstFragment) { //第一次搜索
             List<Fragment> fragmentList = new ArrayList<>();
             searchVideoFragment = SearchVideoFragment.newInstance(videoCardList, searchBar, keyword);
             fragmentList.add(searchVideoFragment);
@@ -165,14 +170,42 @@ public class SearchActivity extends InstanceActivity {
             viewPager.setOffscreenPageLimit(fragmentList.size());
 
             ViewPagerFragmentAdapter vpfAdapter = new ViewPagerFragmentAdapter(getSupportFragmentManager(), fragmentList);
-            viewPager.setAdapter(vpfAdapter);  //没啥好说的，教科书式的ViewPager使用方法
+            viewPager.setAdapter(vpfAdapter);
 
-            firstFragment=false;
-        }
-        else{
+            firstFragment = false;
+        } else { //再次搜索
             searchVideoFragment.refresh(videoCardList,keyword);
             searchArticleFragment.refresh(articleInfoList,keyword);
             searchUserFragment.refresh(userInfoList,keyword);
         }
+    }
+    private Point startPoint;
+
+    /**
+     * Called when a touch screen event was not handled by any of the views under it.
+     * if is swipe up, hide search bar, else show search bar
+     * @param event The touch screen event being processed.
+     */
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()){
+            case MotionEvent.ACTION_DOWN:
+                startPoint = new Point((int)event.getX(),(int)event.getY());
+                break;
+            case MotionEvent.ACTION_MOVE:
+                //先判断是不是竖向滑动， 如果是竖向滑动， 再考虑是上滑还是下滑
+                boolean isVerticalMove = Math.abs(event.getY() - startPoint.y) > Math.abs(event.getX() - startPoint.x);
+                if(isVerticalMove) {
+                    //上滑显示
+                    boolean isSwipeUp = event.getY() - startPoint.y < 0;
+                    if(isSwipeUp) {
+                        searchBar.setVisibility(View.VISIBLE);
+                    }else {
+                        searchBar.setVisibility(View.GONE);
+                    }
+                }
+                break;
+        }
+        return super.onTouchEvent(event);
     }
 }

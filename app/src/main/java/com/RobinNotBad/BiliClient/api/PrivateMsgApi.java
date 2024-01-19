@@ -34,13 +34,18 @@ public class PrivateMsgApi {
     public static final int MSG_TYPE_RETRACT = 5;
 
     // 返回的是倒序的消息列表，使用时记得列表倒置
-    public static JSONObject getPrivateMsg(long talkerId, int size)
+    //seqno传0时只看size，不进行seqno的筛选
+    public static JSONObject getPrivateMsg(long talkerId, int size,long beginSeqno,long endSeqno)
             throws IOException, JSONException {
         String url =
                 "https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?session_type=1&talker_id="
                         + talkerId
                         + "&size="
-                        + size;
+                        + size
+                        + "&begin_seqno="
+                        + beginSeqno
+                        + "&end_seqno="
+                        + endSeqno;
         JSONObject allMsgJson =
                 new JSONObject(
                         Objects.requireNonNull(NetWorkUtil.get(url, ConfInfoApi.webHeaders).body())
@@ -84,21 +89,9 @@ public class PrivateMsgApi {
                 }
                 msgObject.timestamp = msgJson.getLong("timestamp");
                 msgObject.msgId = msgJson.getLong("msg_key");
-                boolean isPuted = list.add(msgObject);
-                Log.e("puted?", String.valueOf(isPuted));
-                Log.e(
-                        "msg",
-                        msgObject.name
-                                + "."
-                                + msgObject.uid
-                                + "."
-                                + msgObject.msgId
-                                + "."
-                                + msgObject.timestamp
-                                + "."
-                                + msgObject.content
-                                + "."
-                                + msgObject.type);
+                msgObject.msgSeqno = msgJson.getLong("msg_seqno");
+                list.add(msgObject);
+                
             }
             Log.e("", "返回msgList");
             for (PrivateMessage i : list) {
@@ -195,33 +188,35 @@ public class PrivateMsgApi {
         return sessionList;
     }
 
-    public static int sendMsg(
+    public static JSONObject sendMsg(
             long senderUid, long receiverUid, int msgType, long timestamp, String content)
             throws IOException, JSONException {
-        String url = "https://api.vc.bilibili.com/web_im/v1/web_im/send_msg";
+        String url = "https://api.vc.bilibili.com/web_im/v1/web_im/send_msg?";
         String per =
-                "dev_id="
+                "msg[dev_id]="
                         + getDevId()
-                        + "&msg_type="
+                        + "&msg[msg_type]="
                         + msgType
-                        + "&content="
+                        + "&msg[content]="
                         + content
-                        + "&receiver_type=1&csrf="
+                        + "&msg[receiver_type]=1&csrf="
                         + SharedPreferencesUtil.getString("csrf", "")
-                        + "&sender_id="
+                        + "&msg[sender_uid]="
                         + senderUid
-                        + "&receiver_id"
+                        + "&msg[receiver_id]="
                         + receiverUid
-                        + "&timestamp="
-                        + System.currentTimeMillis();
+                        + "&msg[timestamp]="
+                        + timestamp;
 
         JSONObject result =
                 new JSONObject(
                         Objects.requireNonNull(
                                         NetWorkUtil.post(url, per, ConfInfoApi.webHeaders).body())
                                 .string());
+        
         Log.e("debug-发送私信", result.toString());
-        return result.getInt("code");
+        Log.e("debug-发送私信", ConfInfoApi.webHeaders.toString());
+        return result;
     }
 
     private static String getDevId() {

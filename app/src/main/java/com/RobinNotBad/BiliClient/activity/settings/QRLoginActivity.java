@@ -19,8 +19,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -149,27 +147,13 @@ public class QRLoginActivity extends InstanceActivity {
                             this.cancel();
                             break;
                         case 0:
-                            String cookies = UserLoginApi.getCookies(response);
+                            String cookies = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies,"");
 
-
-                            List<String> responseCookies = Objects.requireNonNull(Objects.requireNonNull(NetWorkUtil.get("https://www.bilibili.com/")).networkResponse()).headers("Set-Cookie");
-                            String buvid3 = "";
-                            for (String responseCookie : responseCookies) {
-                                if (responseCookie.startsWith("buvid3")) {
-                                    buvid3 = responseCookie;
-                                }
-                            }
-                            buvid3=buvid3.substring(buvid3.indexOf("buvid3"),buvid3.indexOf(";",buvid3.indexOf("buvid3"))+1);
-                            Log.e("buvid3",buvid3);//获取buvid3
-
-                            SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(LittleToolsUtil.getInfoFromCookie("DedeUserID", cookies)));
-                            SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, LittleToolsUtil.getInfoFromCookie("bili_jct", cookies));
-                            SharedPreferencesUtil.putString(SharedPreferencesUtil.cookies, buvid3 + cookies);
+                            SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(NetWorkUtil.getInfoFromCookie("DedeUserID", cookies)));
+                            SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, NetWorkUtil.getInfoFromCookie("bili_jct", cookies));
                             SharedPreferencesUtil.putString(SharedPreferencesUtil.refresh_token,loginJson.getJSONObject("data").getString("refresh_token"));
 
                             Log.e("refresh_token",SharedPreferencesUtil.getString(SharedPreferencesUtil.refresh_token,""));
-
-                            ConfInfoApi.refreshHeaders();
 
                             if(SharedPreferencesUtil.getBoolean("setup",false)) {
                                 Activity instance = InstanceActivity.getInstance(SettingMainActivity.class);

@@ -3,6 +3,9 @@ package com.RobinNotBad.BiliClient.activity.video.info;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -13,6 +16,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -21,17 +25,18 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
 import com.RobinNotBad.BiliClient.R;
+import com.RobinNotBad.BiliClient.activity.ImageViewerActivity;
 import com.RobinNotBad.BiliClient.activity.settings.SettingPlayerActivity;
 import com.RobinNotBad.BiliClient.activity.user.UserInfoActivity;
 import com.RobinNotBad.BiliClient.activity.user.WatchLaterActivity;
 import com.RobinNotBad.BiliClient.activity.user.favorite.AddFavoriteActivity;
-import com.RobinNotBad.BiliClient.activity.video.JumpToPlayerActivity;
 import com.RobinNotBad.BiliClient.activity.video.MultiPageActivity;
-import com.RobinNotBad.BiliClient.activity.ImageViewerActivity;
 import com.RobinNotBad.BiliClient.api.ConfInfoApi;
 import com.RobinNotBad.BiliClient.api.HistoryApi;
 import com.RobinNotBad.BiliClient.api.LikeCoinFavApi;
+import com.RobinNotBad.BiliClient.api.PlayerApi;
 import com.RobinNotBad.BiliClient.api.WatchLaterApi;
 import com.RobinNotBad.BiliClient.model.VideoInfo;
 import com.RobinNotBad.BiliClient.util.CenterThreadPool;
@@ -46,8 +51,9 @@ import com.google.android.material.card.MaterialCardView;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Locale;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Locale;
 
 //真正的视频详情页
 //2023-07-17
@@ -77,7 +83,7 @@ public class VideoInfoFragment extends Fragment {
     public static VideoInfoFragment newInstance(VideoInfo videoInfo) {
         VideoInfoFragment fragment = new VideoInfoFragment();
         Bundle args = new Bundle();
-        args.putParcelable("videoInfo", videoInfo);
+        args.putSerializable("videoInfo", videoInfo);
         fragment.setArguments(args);
         return fragment;
     }
@@ -86,7 +92,7 @@ public class VideoInfoFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            videoInfo = getArguments().getParcelable("videoInfo");
+            videoInfo = (VideoInfo) getArguments().getSerializable("videoInfo");
         }
     }
 
@@ -114,6 +120,7 @@ public class VideoInfoFragment extends Fragment {
         MaterialCardView upCard = view.findViewById(R.id.upInfo);
         MaterialCardView addFavorite = view.findViewById(R.id.addFavorite);
         MaterialCardView download = view.findViewById(R.id.download);
+        MaterialCardView ai_summary = view.findViewById(R.id.ai_summary);
         bvidText = view.findViewById(R.id.bvidText);
         danmakuCount = view.findViewById(R.id.danmakuCount);
         ImageButton like = view.findViewById(R.id.btn_like);
@@ -168,6 +175,16 @@ public class VideoInfoFragment extends Fragment {
                         desc_expand = !desc_expand;
                     });
 
+                    if(SharedPreferencesUtil.getBoolean("copy_enable", true)){
+                        description.setOnLongClickListener(view1 -> {
+                            ClipboardManager clipboardManager = (ClipboardManager) requireActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+                            ClipData clipData = ClipData.newPlainText("label",videoInfo.description);
+                            clipboardManager.setPrimaryClip(clipData);
+                            MsgUtil.toast("已复制简介",requireContext());
+                            return false;
+                        });
+                    }
+
                     tags.setOnClickListener(view1 -> {
                         if (tags_expand) tags.setMaxLines(1);
                         else tags.setMaxLines(512);
@@ -178,21 +195,14 @@ public class VideoInfoFragment extends Fragment {
                         Glide.get(requireContext()).clearMemory();
                         //在播放前清除内存缓存，因为手表内存太小了，播放完回来经常把Activity全释放掉
                         //...经过测试，还是会释放，但会好很多
-
-                        Intent intent = new Intent();
                         if (videoInfo.pagenames.size() > 1) {
-                            intent.setClass(view.getContext(), MultiPageActivity.class);
-                            intent.putExtra("mid", videoInfo.upMid);
-                            intent.putExtra("cids", videoInfo.cids);
-                            intent.putExtra("pages", videoInfo.pagenames);
+                            Intent intent = new Intent()
+                                    .setClass(view.getContext(), MultiPageActivity.class)
+                                    .putExtra("videoInfo", (Serializable) videoInfo);
+                            startActivity(intent);
                         } else {
-                            intent.setClass(view.getContext(), JumpToPlayerActivity.class);
-                            intent.putExtra("cid", videoInfo.cids.get(0));
-                            intent.putExtra("title", videoInfo.title);
+                            PlayerApi.startGettingUrl(requireContext(),videoInfo,0);
                         }
-                        intent.putExtra("bvid", videoInfo.bvid);
-                        intent.putExtra("aid", videoInfo.aid);
-                        startActivity(intent);
                     });
                     play.setOnLongClickListener(view1 -> {
                         Intent intent = new Intent();
@@ -269,25 +279,27 @@ public class VideoInfoFragment extends Fragment {
                             if (downPath.exists() && videoInfo.pagenames.size() == 1)
                                 MsgUtil.toast("已经缓存过了~", requireContext());
                             else {
-                                Intent intent = new Intent();
-                                intent.putExtra("download", 1);
-                                intent.putExtra("cover", videoInfo.cover);
-                                intent.putExtra("bvid", videoInfo.bvid);
-                                intent.putExtra("aid", videoInfo.aid);
-
                                 if (videoInfo.pagenames.size() > 1) {
+                                    Intent intent = new Intent();
                                     intent.setClass(view.getContext(), MultiPageActivity.class);
-                                    intent.putExtra("cids", videoInfo.cids);
-                                    intent.putExtra("pages", videoInfo.pagenames);
-                                    intent.putExtra("title", videoInfo.title);
+                                    intent.putExtra("download", 1);
+                                    intent.putExtra("videoInfo", (Serializable) videoInfo);
+                                    startActivity(intent);
                                 } else {
-                                    intent.setClass(view.getContext(), JumpToPlayerActivity.class);
-                                    intent.putExtra("cid", videoInfo.cids.get(0));
-                                    intent.putExtra("title", videoInfo.title);
+                                    PlayerApi.startDownloadingVideo(requireContext(),videoInfo,0);
                                 }
-                                startActivity(intent);
                             }
                         }
+                    });
+
+                    ai_summary.setOnClickListener(view1 -> {
+                        Intent intent = new Intent();
+                        intent.setClass(view.getContext(), AiSummaryActivity.class);
+                        intent.putExtra("aid", videoInfo.aid);
+                        intent.putExtra("bvid", videoInfo.bvid);
+                        intent.putExtra("cid",videoInfo.cids.get(0));
+                        intent.putExtra("mid", videoInfo.upMid);
+                        startActivity(intent);
                     });
 
                     upCard.setOnClickListener(view1 -> {
